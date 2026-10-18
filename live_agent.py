@@ -1,46 +1,72 @@
 import os
 import sys
 from google import genai
-from google.genai import types
 
-def run_live_diagnostic():
-    # 1. Check for secure environment variable isolation
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
+def aggregate_workspace(workspace_path):
+    """Dynamically parses a directory and creates a unified code context map."""
+    context_payload = "=== MULTI-FILE WORKSPACE ARCHITECTURE ===\n\n"
+    
+    if not os.path.exists(workspace_path):
+        print(f"❌ Error: Workspace path '{workspace_path}' not found.")
+        sys.exit(1)
+        
+    # Walk through all directories and files natively
+    for root, _, files in os.walk(workspace_path):
+        for file in files:
+            if file.endswith('.py'): # Track strictly Python files for now
+                file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(file_path, workspace_path)
+                
+                context_payload += f"--- FILE PATH: {relative_path} ---\n"
+                context_payload += "```python\n"
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        context_payload += f.read()
+                except Exception as e:
+                    context_payload += f"# Error reading file contents: {e}\n"
+                context_payload += "\n```\n\n"
+                
+    return context_payload
+
+def run_agentic_loop():
+    # 1. Verify secure credential vault isolation
+    if not os.getenv("GEMINI_API_KEY"):
         print("❌ CRITICAL ERROR: GEMINI_API_KEY environment variable not found!")
-        print("Please verify your windows setx configuration and restart your terminal.")
         sys.exit(1)
         
     print("🔒 Environment Verification: Secure API Key Found.")
     
-    # 2. Initialize the modern GenAI Client
-    # The client automatically discovers the GEMINI_API_KEY environment variable
+    # 2. Ingest the multi-file project workspace context dynamically
+    workspace_folder = "./mock_workspace"
+    print(f"📁 Scanning target workspace directory: '{workspace_folder}'...")
+    workspace_context = aggregate_workspace(workspace_folder)
+    
+    # 3. Initialize the Google Gen AI Client
     client = genai.Client()
     
-    # 3. Define a broken snippet for the model to analyze live
-    broken_code = """
-def calculate_metrics(data):
-    # Intentional bug: executing undefined variable to test error capturing
-    result = raw_values * 2 
-    return result
-"""
+    # 4. Construct the engineering instruction prompt
+    system_instruction = (
+        "You are an expert static analysis automated agent. You have been provided the full multi-file "
+        "contents of a broken project repository. Analyze the entire repository layout, find the core cross-file "
+        "dependency flaws causing errors, and output the fully corrected, functional versions of the files. "
+        "Clearly indicate which file path each code block belongs to."
+    )
     
-    print("📡 Sending live execution payload to gemini-3.8-flash...")
+    print("📡 Transmitting multi-file workspace payload to gemini-3.8-flash...")
     
     try:
-        # 4. Generate content using the fast, engineering-optimized model
         response = client.models.generate_content(
             model='gemini-3.8-flash',
-            contents=f"Analyze this broken Python code and provide only the corrected function block:\n{broken_code}",
+            contents=f"{system_instruction}\n\nHere is the codebase context:\n{workspace_context}",
         )
         
-        print("\n🏆 Live API Connection Successful! Response Received:")
-        print("-" * 50)
+        print("\n🏆 Global Review Successful! Multi-File Corrections Received:")
+        print("-" * 60)
         print(response.text)
-        print("-" * 50)
+        print("-" * 60)
         
     except Exception as e:
-        print(f"❌ API Call Failed: {e}")
+        print(f"❌ Core Transmission Failure: {e}")
 
 if __name__ == "__main__":
-    run_live_diagnostic()
+    run_agentic_loop()
