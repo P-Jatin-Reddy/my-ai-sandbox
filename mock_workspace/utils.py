@@ -1,5 +1,4 @@
-# Broken Utility File
+# Utility File
 def format_payload(raw_input):
-    # Intentional Bug: string concatenation error with integer
-    processed = raw_input + 500
+    processed = str(raw_input) + str(500)
     return processed
